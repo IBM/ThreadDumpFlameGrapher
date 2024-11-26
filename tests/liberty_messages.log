@@ -1,0 +1,28 @@
+********************************************************************************
+[8/28/24 14:02:07:849 EDT] 000008ed com.ibm.ws.request.timing.manager.SlowRequestManager         W TRAS0112W: Request AAGji2JtrrY_AAAAAAAADPq has been running on thread 000008c5 for at least 2174.959ms. The following stack trace shows what this thread is currently running.
+
+         at java.net.SocketInputStream.socketRead0(Native Method)
+         at java.net.SocketInputStream.socketRead(SocketInputStream.java:127)
+         at java.net.SocketInputStream.read(SocketInputStream.java:182)
+         at java.net.SocketInputStream.read(SocketInputStream.java:152)
+         at com.sybase.jdbc4.timedio.RawDbio.reallyRead(RawDbio.java:404)
+
+The following table shows the events that have run during this request.
+
+Duration     Operation
+[8/28/24 14:02:07:903 EDT] 000008c5 .request.timing.probeExtensionImpl.SlowRequestProbeExtension I TRAS0113I: Request AAGji2JtrrY_AAAAAAAADPq on thread 000008c5, which was previously detected as slow, completed after 2229.875 ms.
+[8/28/24 14:02:07:920 EDT] 000008ee com.ibm.ws.request.timing.manager.SlowRequestManager         W TRAS0112W: Request AAGji2JtrrY_AAAAAAAADPv has been running on thread 000008df for at least 2000.881ms. The following stack trace shows what this thread is currently running.
+
+         at java.net.PlainSocketImpl.socketConnect(Native Method)
+         at java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:380)
+         at java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:236)
+         at java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:218)
+         at java.net.SocksSocketImpl.connect(SocksSocketImpl.java:403)
+         at java.net.Socket.connect(Socket.java:682)
+         at com.sybase.jdbc4.timedio.RawDbio.doConnect(RawDbio.java:117)
+
+The following table shows the events that have run during this request.
+
+Duration     Operation
+[8/28/24 14:02:08:190 EDT] 000008df .request.timing.probeExtensionImpl.SlowRequestProbeExtension I TRAS0113I: Request AAGji2JtrrY_AAAAAAAADPv on thread 000008df, which was previously detected as slow, completed after 2271.460 ms.
+
