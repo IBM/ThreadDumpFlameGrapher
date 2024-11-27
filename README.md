@@ -1,14 +1,22 @@
-# ThreadDumpFlameGrapher
+# Thread Dump Flame Grapher
 
-Convert thread dumps to [flame graphs](https://www.brendangregg.com/flamegraphs.html).
+Thread Dump Flame Grapher (TDFG) converts thread dumps of various forms into [flame graphs](https://www.brendangregg.com/flamegraphs.html).
 
 ## Usage
 
-1. Create the flame graphs and the HTML wrapper page:
+1. Clone this repository:
    ```
-   flamegraph.sh javacore*txt
+   git clone https://github.com/IBM/ThreadDumpFlameGrapher
    ```
-1. Open `flamegraph_list.html` in a browser
+1. Change directory into the clone:
+   ```
+   cd ThreadDumpFlameGrapher
+   ```
+1. Run the shell script on input files or directories:
+   ```
+   ./flamegraph.sh javacore*txt
+   ```
+1. Open the generated `flamegraph_list.html` in a browser
 
 ## Screenshot
 
