@@ -29,6 +29,9 @@ BEGIN {
   THREAD_DUMP_TYPE_HOTSPOT = 2;
   THREAD_DUMP_TYPE_LIBERTY_TRAS0112W = 3;
   THREAD_DUMP_TYPE_TWAS_WSVR0605W = 4;
+  THREAD_DUMP_TYPE_TWAS_WTRN0124I = 5;
+  THREAD_DUMP_TYPE_JDMPVIEW_JAVA = 6;
+  THREAD_DUMP_TYPE_JDMPVIEW_NATIVE = 7;
 
   # https://www.ibm.com/docs/en/sdk-java-technology/8?topic=dumps-java-dump#threads
   THREAD_STATE_MAP["R"] = "Runnable" # The thread is able to run
@@ -78,7 +81,7 @@ BEGIN {
   }
 
   if (verbose) {
-    printDebug("CONFIG: groupByThreadState=" groupByThreadState);
+    printVerbose("CONFIG: groupByThreadState=" groupByThreadState);
   }
 }
 
@@ -136,23 +139,32 @@ function resetStack() {
 
 FNR == 1 {
   if (verbose)
-    printDebug("FILE: " FILENAME);
+    printVerbose("FILE: " FILENAME);
 
   resetStack();
 }
 
-{
-  if (verbose)
-    printDebug("LINE: " processInput($0));
-}
+#{
+#  if (verbose)
+#    printVerbose("LINE: " processInput($0));
+#}
 
 function fatalError(message) {
   printf("ERROR: %s @ %s %s\n%s\n", message, FILENAME, FNR, processInput($0)) > "/dev/stderr";
   exit 1;
 }
 
-function printDebug(message) {
-  printf("DEBUG: %s\n", message) > "/dev/stderr";
+function printVerbose(str) {
+  printf("VERBOSE: %s\n", str) > "/dev/stderr";
+}
+
+function isInterestingMessageLine(message) {
+  if (length(checkmessage) > 0) {
+    if (!($0 ~ checkmessage)) {
+      return 0;
+    }
+  }
+  return 1;
 }
 
 /3XMTHREADINFO / {
@@ -165,7 +177,8 @@ function printDebug(message) {
   if (processInput($0) ~ /J9VMThread/) {
     threadName = processInput($0);
     gsub(/" J9VMThread.*/, "", threadName);
-    gsub(/.*"/, "", threadName);
+    gsub(/3XMTHREADINFO +"/, "", threadName);
+    gsub(/"/, "", threadName);
   } else {
     threadName = ANONYMOUS_THREAD_NAME;
   }
@@ -185,8 +198,9 @@ function processThreadName(name) {
 
   shouldProcessThread = isThreadInteresting(name);
 
-  if (verbose)
-    printDebug(name "," state "," threadPoolName);
+  if (verbose) {
+    printVerbose(name "," state "," threadPoolName);
+  }
 }
 
 ## Start TRAS0112W
@@ -206,7 +220,7 @@ shouldProcessThread && threadDumpType == THREAD_DUMP_TYPE_LIBERTY_TRAS0112W && !
   }
 }
 
-/TRAS0112W: Request/ {
+/TRAS0112W: Request/ && !skip_TRAS0112W && isInterestingMessageLine($0) {
   resetStack();
   threadDumpType = THREAD_DUMP_TYPE_LIBERTY_TRAS0112W;
   threadName = processInput($15);
@@ -229,16 +243,102 @@ shouldProcessThread && threadDumpType == THREAD_DUMP_TYPE_TWAS_WSVR0605W && !/^[
   resetStack();
 }
 
-/WSVR0605W: Thread/ {
-  resetStack();
-  threadDumpType = THREAD_DUMP_TYPE_TWAS_WSVR0605W;
-  threadName = processInput($0);
-  gsub(/.*Thread "/, "", threadName);
-  gsub(/".*/, "", threadName);
-  processThreadName(threadName);
+/WSVR0605W: / && !skip_WSVR0605W && isInterestingMessageLine($0) {
+  shouldProcess = 1;
+
+  if (mindate) {
+    i = match($0, /^\[[0-9]+\/[0-9]+\/[0-9][0-9] [0-9]+:[0-9][0-9]:[0-9][0-9]/);
+    if (i) {
+      str = substr($0, 2);
+      split(str, pieces, / /);
+      split(pieces[1], datePieces, /\//);
+      year = 2000 + datePieces[3];
+      month = 0 + datePieces[1];
+      day = 0 + datePieces[2];
+      date = 0 + sprintf("%d%02d%02d", year, month, day);
+      if (date < mindate) {
+        shouldProcess = 0;
+      }
+    }
+  }
+
+  if (shouldProcess) {
+    resetStack();
+    threadDumpType = THREAD_DUMP_TYPE_TWAS_WSVR0605W;
+    threadName = processInput($0);
+    gsub(/.*Thread "/, "", threadName);
+    gsub(/".*/, "", threadName);
+    processThreadName(threadName);
+  }
 }
 
 ## End WSVR0605W
+
+## Start WTRN0124I
+
+shouldProcessThread && threadDumpType == THREAD_DUMP_TYPE_TWAS_WTRN0124I && /^[ \t]+[a-zA-Z]/ {
+  inputLine = processInput($0);
+  gsub(/^[ \t]+/, "", inputLine);
+  processStackFrame(inputLine);
+}
+
+shouldProcessThread && threadDumpType == THREAD_DUMP_TYPE_TWAS_WTRN0124I && !/^[ \t]+[a-zA-Z]/ {
+  inputLine = processInput($0);
+  if (!(inputLine ~ /^ *: *$/)) {
+    resetStack();
+  }
+}
+
+/WTRN0124I:/ && !skip_WTRN0124I && isInterestingMessageLine($0) {
+  resetStack();
+  threadDumpType = THREAD_DUMP_TYPE_TWAS_WTRN0124I;
+  threadName = processInput($0);
+  gsub(/.*associated was Thread\[/, "", threadName);
+  gsub(/\]. The stack.*/, "", threadName);
+  processThreadName(threadName);
+}
+
+## End WTRN0124I
+
+## Start THREAD_DUMP_TYPE_JDMPVIEW_JAVA
+
+/name:          [^ ]+/ && isInterestingMessageLine($0) {
+  resetStack();
+  threadDumpType = THREAD_DUMP_TYPE_JDMPVIEW_JAVA;
+  threadName = processInput($0);
+  gsub(/^[ ]*name:[ ]+/, "", threadName);
+  processThreadName(threadName);
+}
+
+shouldProcessThread && threadDumpType == THREAD_DUMP_TYPE_JDMPVIEW_JAVA && /^[ ]*Thread.State:/ {
+  threadState = processInput($NF);
+}
+
+shouldProcessThread && threadDumpType == THREAD_DUMP_TYPE_JDMPVIEW_JAVA && /^[ ]*bp: 0x.*method: / {
+  inputLine = processInput($0);
+  gsub(/.*method: [^ ]+ /, "", inputLine);
+  gsub(/\(.*/, "", inputLine);
+  processStackFrame(inputLine);
+}
+
+## End THREAD_DUMP_TYPE_JDMPVIEW_JAVA
+
+## Start THREAD_DUMP_TYPE_JDMPVIEW_NATIVE
+
+/thread id: 0x/ && isInterestingMessageLine($0) {
+  resetStack();
+  threadDumpType = THREAD_DUMP_TYPE_JDMPVIEW_NATIVE;
+  threadName = processInput($NF);
+  processThreadName(threadName);
+}
+
+shouldProcessThread && threadDumpType == THREAD_DUMP_TYPE_JDMPVIEW_NATIVE && /^[ ]*bp: [^ ]+ pc: / {
+  inputLine = processInput($0);
+  gsub(/.*bp: [^ ]+ pc: [^ ]+ /, "", inputLine);
+  processStackFrame(inputLine);
+}
+
+## End THREAD_DUMP_TYPE_JDMPVIEW_NATIVE
 
 /tid=/ && /nid=/ {
   resetStack();
@@ -264,7 +364,7 @@ shouldProcessThread && /3XMTHREADINFO1.*native thread ID:0x[^,]+,/ {
   decimalThreadId = parseHex(hexThreadId);
 
   if (verbose)
-    printDebug(hexThreadId "," decimalThreadId);
+    printVerbose(hexThreadId "," decimalThreadId);
 }
 
 shouldProcessThread && (/4XESTACKTRACE/ || /4XENATIVESTACK/) {
@@ -308,7 +408,7 @@ shouldProcessThread && threadDumpType == THREAD_DUMP_TYPE_HOTSPOT && /^[ \t]*at 
 function doStacksMatch(compressedStack, knownComparisonStack) {
 
   if (verbose) {
-    printDebug("doStacksMatch: entry " compressedStack);
+    printVerbose("doStacksMatch: entry " compressedStack);
   }
 
   split(compressedStack, pieces, /;/);
@@ -332,25 +432,25 @@ function doStacksMatch(compressedStack, knownComparisonStack) {
   }
 
   if (verbose) {
-    printDebug("doStacksMatch: check: " check);
-    printDebug("doStacksMatch: checkReversed: " checkReversed);
-    printDebug("doStacksMatch: knownComparisonStack: " knownComparisonStack);
+    printVerbose("doStacksMatch: check: " check);
+    printVerbose("doStacksMatch: checkReversed: " checkReversed);
+    printVerbose("doStacksMatch: knownComparisonStack: " knownComparisonStack);
   }
 
   if (check == knownComparisonStack) {
     if (verbose) {
-      printDebug("doStacksMatch: exit true (forward)");
+      printVerbose("doStacksMatch: exit true (forward)");
     }
     return 1;
   }
   if (checkReversed == knownComparisonStack) {
     if (verbose) {
-      printDebug("doStacksMatch: exit true (reverse)");
+      printVerbose("doStacksMatch: exit true (reverse)");
     }
     return 1;
   }
   if (verbose) {
-    printDebug("doStacksMatch: exit false");
+    printVerbose("doStacksMatch: exit false");
   }
   return 0;
 }
@@ -373,6 +473,7 @@ function isInterestingStack(compressedStack) {
         doStacksMatch(compressedStack, "com/ibm/ws/util/ThreadPool$Worker.run;com/ibm/ws/util/ThreadPool.getTask;com/ibm/ws/util/BoundedBuffer.poll;com/ibm/ws/util/BoundedBuffer.waitGet_;com/ibm/ws/util/BoundedBuffer$GetQueueLock.await;java/util/concurrent/locks/AbstractQueuedSynchronizer$ConditionObject.await;java/util/concurrent/locks/LockSupport.parkNanos;sun/misc/Unsafe.park") ||
         doStacksMatch(compressedStack, "java/lang/Thread.run;com/ibm/ejs/j2c/work/WorkScheduler.run;java/lang/Object.wait;java/lang/Object.wait") ||
         doStacksMatch(compressedStack, "com/ibm/ws/asynchbeans/am/AlarmManagerThread.run;java/lang/Object.wait;java/lang/Object.wait") ||
+        doStacksMatch(compressedStack, "com/ibm/ws/asynchbeans/am/AlarmManagerThread.run;java/lang/Object.wait;java/lang/Object.wait;java/lang/Object.waitImpl") ||
         doStacksMatch(compressedStack, "com/ibm/ws/util/ThreadPool$Worker.run;com/ibm/ws/util/ThreadPool.getTask;com/ibm/ws/util/BoundedBuffer.poll;com/ibm/ws/util/BoundedBuffer.waitGet_;java/lang/Object.wait;java/lang/Object.wait") ||
         doStacksMatch(compressedStack, "java/util/TimerThread.run;java/util/TimerThread.mainLoop;java/lang/Object.wait;java/lang/Object.wait") ||
         doStacksMatch(compressedStack, "java/lang/Thread.run;java/util/concurrent/ThreadPoolExecutor$Worker.run;java/util/concurrent/ThreadPoolExecutor.runWorker;java/util/concurrent/ThreadPoolExecutor.getTask;java/util/concurrent/ScheduledThreadPoolExecutor$DelayedWorkQueue.take;java/util/concurrent/ScheduledThreadPoolExecutor$DelayedWorkQueue.take;java/util/concurrent/locks/AbstractQueuedSynchronizer$ConditionObject.awaitNanos;java/util/concurrent/locks/LockSupport.parkNanos;sun/misc/Unsafe.park") ||
@@ -403,6 +504,8 @@ function isInterestingStack(compressedStack) {
         doStacksMatch(compressedStack, "java/lang/Thread.run;java/util/concurrent/ThreadPoolExecutor$Worker.run;java/util/concurrent/ThreadPoolExecutor.runWorker;java/util/concurrent/FutureTask.run;java/util/concurrent/Executors$RunnableAdapter.call;com/ibm/ws/threading/internal/ExecutorServiceImpl$RunnableWrapper.run;com/ibm/ws/request/timing/manager/HungRequestManager$2.run;com/ibm/ws/request/timing/queue/DelayedRequestQueue.processNext;java/util/concurrent/DelayQueue.take;java/util/concurrent/locks/AbstractQueuedSynchronizer$ConditionObject.await;java/util/concurrent/locks/LockSupport.park;sun/misc/Unsafe.park") ||
         doStacksMatch(compressedStack, "java/lang/Thread.run;java/util/concurrent/ThreadPoolExecutor$Worker.run;java/util/concurrent/ThreadPoolExecutor.runWorker;java/util/concurrent/FutureTask.run;java/util/concurrent/Executors$RunnableAdapter.call;com/ibm/ws/threading/internal/ExecutorServiceImpl$RunnableWrapper.run;com/ibm/ws/request/timing/manager/SlowRequestManager$2.run;com/ibm/ws/request/timing/queue/DelayedRequestQueue.processNext;java/util/concurrent/DelayQueue.take;java/util/concurrent/locks/AbstractQueuedSynchronizer$ConditionObject.await;java/util/concurrent/locks/LockSupport.park;sun/misc/Unsafe.park") ||
         doStacksMatch(compressedStack, "java/lang/Thread.run;java/lang/Thread.runWith;java/util/concurrent/ThreadPoolExecutor$Worker.run;java/util/concurrent/ThreadPoolExecutor.runWorker;java/util/concurrent/ThreadPoolExecutor.getTask;com/ibm/ws/threading/internal/BoundedBuffer.take;com/ibm/ws/threading/internal/BoundedBuffer.waitGet_;java/lang/Object.wait;java/lang/Object.wait;java/lang/Object.waitImpl") ||
+        doStacksMatch(compressedStack, "java/lang/Thread.run;com/ibm/ws/drs/ha/DRSAgentClassEvents$1.run;java/lang/Object.wait;java/lang/Object.wait;java/lang/Object.waitImpl") ||
+        doStacksMatch(compressedStack, "java/lang/Thread.run;com/ibm/ws/drs/ws390/DRSControllerInstanceWrapper.run;java/lang/Object.wait;java/lang/Object.wait;java/lang/Object.waitImpl") ||
 #        doStacksMatch(compressedStack, "") ||
         doStacksMatch(compressedStack, "java/lang/Thread.run;com/ibm/ws/asynchbeans/ABWorkItemImpl.run;com/ibm/ws/asynchbeans/WorkWithExecutionContextImpl.go;com/ibm/ws/asynchbeans/J2EEContext.run;java/security/AccessController.doPrivileged;com/ibm/ws/asynchbeans/J2EEContext$DoAsProxy.run;com/ibm/websphere/security/auth/WSSubject.doAs;com/ibm/websphere/security/auth/WSSubject.doAs;javax/security/auth/Subject.doAs;java/security/AccessController.doPrivileged;com/ibm/ws/asynchbeans/J2EEContext$RunProxy.run;com/ibm/ws/scheduler/SchedulerDaemonImpl.run;java/lang/Object.wait;java/lang/Object.wait")) {
       return 0;
@@ -491,8 +594,6 @@ function parseDecimal(str) {
 }
 
 function getThreadPoolName(line) {
-  gsub(/ : .*/, " : X", line);
-  gsub(/-thread-.*/, "-thread-X", line);
   gsub(/^DispatchThread.*/, "DispatchThread X", line);
   gsub(/^RcvThread.*/, "RcvThread X", line);
   gsub(/^RT=.*/, "RT=X", line);
@@ -513,11 +614,11 @@ function getThreadPoolName(line) {
   gsub(/^AIO Timer Thread.*/, "AIO Timer Thread X", line);
   gsub(/^com.ibm.son.mesh.Peer-tcp-port.*/, "com.ibm.son.mesh.Peer-tcp-port X", line);
   gsub(/^Connect Selector.*/, "Connect Selector X", line);
-  gsub(/-[0-9]+$/, "-X", line);
-  gsub(/-[0-9]+ Suspended$/, "-X Suspended", line);
-  gsub(/\.[0-9]+$/, ".X", line);
   gsub(/[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]-[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]-[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]-[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]-[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]$/, "UUID", line);
+  gsub(/[\[\]\(\)\-0-9:\.]+$/, "X", line);
+  gsub(/-[0-9]+ Suspended$/, "-X Suspended", line);
   gsub(/ t=[a-fA-F0-9]+/, " t=X", line);
+  gsub(/ : .*/, " : X", line);
   return line;
 }
 
@@ -577,8 +678,10 @@ function isThreadInteresting(threadName) {
         threadName ~ /MessageListenerThreadPool/ || \
         threadName ~ /ORB\.thread\.pool/ || \
         threadName ~ /WebSphere WLM Dispatch Thread/ || \
+        threadName ~ /WebSphere t=/ || \
         threadName ~ /WorkManager/ || \
         threadName ~ /XIO/ || \
+        threadName ~ /server.startup/ || \
         threadName ~ /WMQJCAResourceAdapter/ \
     ) {
       return isInterestingThreadID(threadName);
@@ -607,7 +710,7 @@ END {
   if (verbose) {
     for (key in threadStateCounts) {
       count = threadStateCounts[key];
-      printDebug("Thread State " key " " count);
+      printVerbose("Thread State " key " " count);
     }
   }
 }

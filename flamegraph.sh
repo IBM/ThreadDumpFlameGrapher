@@ -12,9 +12,13 @@ EOF
   exit 22
 }
 
+EXTRA_AWK_FLAGS=""
 OPTIND=1
-while getopts "o:h?" opt; do
+while getopts "a:o:h?" opt; do
   case "$opt" in
+    a)
+      EXTRA_AWK_FLAGS="${OPTARG}"
+      ;;
     o)
       ONLYFLAGS="${OPTARG}"
       ;;
@@ -117,11 +121,11 @@ while read FLAGS_COMBINATION; do
     FLAGS_COMBINATION=$REMAINING
   done
   
-  echo "[$(date)] [${GRAPH_COUNT} / ${TOTAL_GRAPHS}] Creating ${NAME} with awk flags ${SPECIFIC_AWK_FLAGS} and perl flags ${SPECIFIC_PERL_FLAGS} ${COMMON_FLAMEGRAPH_OPTIONS}"
+  echo "[$(date)] [${GRAPH_COUNT} / ${TOTAL_GRAPHS}] Creating ${NAME} with awk flags ${SPECIFIC_AWK_FLAGS} ${EXTRA_AWK_FLAGS} and perl flags ${SPECIFIC_PERL_FLAGS} ${COMMON_FLAMEGRAPH_OPTIONS}"
 
   if [ "${ONLYFLAGS}" = "" ] || [ "${ONLYFLAGS}" = "${ORIGINAL_FLAGS_COMBINATION}" ]; then
 
-    "${SCRIPTDIR}/flamegraph.awk" ${SPECIFIC_AWK_FLAGS} "${@}" | \
+    "${SCRIPTDIR}/flamegraph.awk" ${SPECIFIC_AWK_FLAGS} ${EXTRA_AWK_FLAGS} "${@}" | \
       "${SCRIPTDIR}/flamegraph.pl" --title="${NAME}" ${SPECIFIC_PERL_FLAGS} ${COMMON_FLAMEGRAPH_OPTIONS} > "${NAME}"
     RC=$?
 
