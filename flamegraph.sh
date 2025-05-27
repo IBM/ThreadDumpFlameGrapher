@@ -7,17 +7,24 @@ SCRIPTDIR=$(dirname "$0")
 usage() {
   printf "Usage: %s [FILE|DIR...]\n" "$(basename "${0}")"
   cat <<"EOF"
-             -o: Only specific flags (e.g. the default of cilst)
+             -d: Output directory (default: ./tdfg_$(date +%Y%m%d_%H%M%S)/)
+             -o: Only specific flags (default: cilst)
 EOF
   exit 22
 }
 
 EXTRA_AWK_FLAGS=""
 OPTIND=1
-while getopts "a:o:h?" opt; do
+OUTPUT_DIRECTORY="./tdfg_$(date +%Y%m%d_%H%M%S)/"
+IS_DEFAULT_OUTPUT_DIRECTORY=1
+while getopts "a:d:o:h?" opt; do
   case "$opt" in
     a)
       EXTRA_AWK_FLAGS="${OPTARG}"
+      ;;
+    d)
+      OUTPUT_DIRECTORY="${OPTARG}"
+      IS_DEFAULT_OUTPUT_DIRECTORY=0
       ;;
     o)
       ONLYFLAGS="${OPTARG}"
@@ -39,12 +46,12 @@ if [ $# -eq 0 ]; then
   usage
 fi
 
-if ls flamegraph*.svg >/dev/null 2>/dev/null; then
-  if ! rm flamegraph*.svg; then
-    echo "ERROR: Could not delete existing SVG files with: rm flamegraph*.svg" 2>&1
-    exit 1
-  fi
+mkdir -p "${OUTPUT_DIRECTORY}"
+if [ "${IS_DEFAULT_OUTPUT_DIRECTORY}" -eq "1" ]; then
+  chmod 777 "${OUTPUT_DIRECTORY}"
 fi
+
+echo "[$(date)] Output directory: ${OUTPUT_DIRECTORY}"
 
 SVGWIDTH="1600"
 COMMON_FLAMEGRAPH_OPTIONS="--colors=red --width=${SVGWIDTH}"
@@ -97,7 +104,7 @@ echo "[$(date)] Processing files: ${@}"
 while read FLAGS_COMBINATION; do
   GRAPH_COUNT=$(( $GRAPH_COUNT + 1 ))
   ORIGINAL_FLAGS_COMBINATION="${FLAGS_COMBINATION}"
-  NAME="flamegraph_options_${FLAGS_COMBINATION}.svg"
+  NAME="${OUTPUT_DIRECTORY}/flamegraph_options_${FLAGS_COMBINATION}.svg"
   SPECIFIC_AWK_FLAGS=""
   SPECIFIC_PERL_FLAGS=""
   while [ ${#FLAGS_COMBINATION} -gt 0 ]; do
@@ -159,7 +166,7 @@ else
   RC=64
 fi
 
-OUTPUT="flamegraph_list.html"
+OUTPUT="${OUTPUT_DIRECTORY}/flamegraph_list.html"
 
 # NOTE: EOF does not have single quotes around it which means that variable expansion
 #       using $ within the HTML will be performed!
