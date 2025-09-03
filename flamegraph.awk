@@ -32,24 +32,31 @@ BEGIN {
   THREAD_DUMP_TYPE_TWAS_WTRN0124I = 5;
   THREAD_DUMP_TYPE_JDMPVIEW_JAVA = 6;
   THREAD_DUMP_TYPE_JDMPVIEW_NATIVE = 7;
+  THREAD_DUMP_TYPE_VALGRIND = 8;
 
   # https://www.ibm.com/docs/en/sdk-java-technology/8?topic=dumps-java-dump#threads
-  THREAD_STATE_MAP["R"] = "Runnable" # The thread is able to run
-  THREAD_STATE_MAP["CW"] = "Condition Wait" # The thread is waiting
-  THREAD_STATE_MAP["S"] = "Suspended" # The thread is suspended by another thread
-  THREAD_STATE_MAP["Z"] = "Zombie" # The thread is destroyed
-  THREAD_STATE_MAP["P"] = "Parked" # The thread is parked by java.util.concurrent
-  THREAD_STATE_MAP["B"] = "Blocked" # The thread is waiting to obtain a lock
-  THREAD_STATE_MAP["N"] = "Native Thread Unknown" # Anonymous native thread; no state reported
-  THREAD_STATE_MAP["U"] = "Unknown State"
+  THREAD_STATE_MAP["R"] = "Runnable"; # The thread is able to run
+  THREAD_STATE_MAP["CW"] = "Condition Wait"; # The thread is waiting
+  THREAD_STATE_MAP["S"] = "Suspended"; # The thread is suspended by another thread
+  THREAD_STATE_MAP["Z"] = "Zombie"; # The thread is destroyed
+  THREAD_STATE_MAP["P"] = "Parked"; # The thread is parked by java.util.concurrent
+  THREAD_STATE_MAP["B"] = "Blocked"; # The thread is waiting to obtain a lock
+  THREAD_STATE_MAP["N"] = "Native Thread Unknown"; # Anonymous native thread; no state reported
+  THREAD_STATE_MAP["U"] = "Unknown State";
 
   # For HotSpot: https://docs.oracle.com/javase/8/docs/api/java/lang/Thread.State.html
-  THREAD_STATE_MAP["NEW"] = "Unknown State"
-  THREAD_STATE_MAP["RUNNABLE"] = "Runnable"
-  THREAD_STATE_MAP["BLOCKED"] = "Blocked"
-  THREAD_STATE_MAP["WAITING"] = "Condition Wait"
-  THREAD_STATE_MAP["TIMED_WAITING"] = "Condition Wait"
-  THREAD_STATE_MAP["TERMINATED"] = "Zombie"
+  THREAD_STATE_MAP["NEW"] = "Unknown State";
+  THREAD_STATE_MAP["RUNNABLE"] = "Runnable";
+  THREAD_STATE_MAP["BLOCKED"] = "Blocked";
+  THREAD_STATE_MAP["WAITING"] = "Condition Wait";
+  THREAD_STATE_MAP["TIMED_WAITING"] = "Condition Wait";
+  THREAD_STATE_MAP["TERMINATED"] = "Zombie";
+
+  # Valgrind kinds
+  THREAD_STATE_MAP["definitely lost"] = "Definitely lost";
+  THREAD_STATE_MAP["indirectly lost"] = "Indirectly lost";
+  THREAD_STATE_MAP["possibly lost"] = "Possibly lost";
+  THREAD_STATE_MAP["still reachable"] = "Still reachable";
 
   # Set defaults or handle true values
   if (length(nativeStacksForJavaThreads) == 0) {
@@ -121,7 +128,7 @@ function resetStack() {
 
         if (shouldCount) {
           finalKey = finalStackProcessing(finalKey);
-          counts[finalKey]++;
+          counts[finalKey] += stackCount;
         }
       }
     }
@@ -135,6 +142,7 @@ function resetStack() {
   hasSomeStack = 0;
   shouldProcessThread = 0;
   threadDumpType = 0;
+  stackCount = 1;
 }
 
 FNR == 1 {
@@ -339,6 +347,31 @@ shouldProcessThread && threadDumpType == THREAD_DUMP_TYPE_JDMPVIEW_NATIVE && /^[
 }
 
 ## End THREAD_DUMP_TYPE_JDMPVIEW_NATIVE
+
+## Start THREAD_DUMP_TYPE_VALGRIND
+
+/bytes in.*in loss record/ && isInterestingMessageLine($0) {
+  resetStack();
+  threadDumpType = THREAD_DUMP_TYPE_VALGRIND;
+  threadName = "Valgrind";
+  processThreadName(threadName);
+
+  stackCount = $2;
+  gsub(/,/, "", stackCount);
+
+  threadState = processInput($0);
+  gsub(/.* blocks are /, "", threadState);
+  gsub(/ in loss record.*/, "", threadState);
+  threadStateCounts[threadState]++;
+}
+
+shouldProcessThread && threadDumpType == THREAD_DUMP_TYPE_VALGRIND && /[at|by] 0x[0-9a-fA-F]+: / {
+  inputLine = processInput($0);
+  gsub(/.*[at|by] 0x[0-9a-fA-F]+: /, "", inputLine);
+  processStackFrame(inputLine);
+}
+
+## End THREAD_DUMP_TYPE_VALGRIND
 
 /tid=/ && /nid=/ {
   resetStack();

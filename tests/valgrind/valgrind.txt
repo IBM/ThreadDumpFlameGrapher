@@ -1,0 +1,18 @@
+==347283== 24 bytes in 1 blocks are still reachable in loss record 2 of 59
+==347283==    at 0x4C39913: operator new(unsigned long) (vg_replace_malloc.c:483)
+==347283==    by 0x45C433: SomeVar(std::vector<std::string, std::allocator<std::string> > const&, char const*) (in /tmp/dir/exe)
+==347283==    by 0x43C1C1: Manager::AddToConfigContext(char const*, CSmConfigCtxt*) (in /tmp/dir/exe)
+==347283==    by 0x416488: main (in /tmp/dir/exe)
+==347283==
+
+==44202== 36,406 (72 direct, 36,334 indirect) bytes in 1 blocks are definitely lost in loss record 107 of 109
+==44202==    at 0x4C39913: operator new(unsigned long) (vg_replace_malloc.c:483)
+==44202==    by 0xBF65056: initializeLocales(char const*) (in /tmp/dir/bin/lib.so)
+==44202==    by 0xBF65132: InitializeLocales() (in /tmp/dir/bin/lib.so)
+==44202==    by 0xBF6630D: __static_initialization_and_destruction_0(int, int) (in /tmp/dir/bin/lib.so)
+==44202==    by 0xBF663FC: root (in /tmp/dir/bin/lib.so)
+==44202==    by 0xBF73885: ??? (in /tmp/dir/bin/lib.so)
+==44202==    by 0xBF55E7A: ??? (in /tmp/dir/bin/lib.so)
+==44202==    by 0x64BADAF: ???
+==44202==    by 0x40090D9: call_init.part.0 (dl-init.c:58)
+==44202==    by 0x4009219: call_init (dl-init.c:118)
