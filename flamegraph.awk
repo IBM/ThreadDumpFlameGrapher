@@ -644,6 +644,7 @@ function getThreadPoolName(line) {
   gsub(/^ThreadManager.JobsProcessorThread.ApplicationThread.*/, "ThreadManager.JobsProcessorThread.ApplicationThread X", line);
   gsub(/^ThreadManager.JobsProcessorThread.RmmThread.*/, "ThreadManager.JobsProcessorThread.RmmThread X", line);
   gsub(/\[SSL: ServerSocket\[.*\]\].*/, "[SSL: ServerSocket[X]]", line);
+  gsub(/HAR\.[0-9]+\.Thread/, "HAR.X.Thread", line);
   gsub(/^AIO Timer Thread.*/, "AIO Timer Thread X", line);
   gsub(/^com.ibm.son.mesh.Peer-tcp-port.*/, "com.ibm.son.mesh.Peer-tcp-port X", line);
   gsub(/^Connect Selector.*/, "Connect Selector X", line);
@@ -652,6 +653,8 @@ function getThreadPoolName(line) {
   gsub(/-[0-9]+ Suspended$/, "-X Suspended", line);
   gsub(/ t=[a-fA-F0-9]+/, " t=X", line);
   gsub(/ : .*/, " : X", line);
+  gsub(/jgroups-[0-9]+,Sterling_NodeInfo_group,b2bi-sfg-asi-serverX/, "jgroups-X,Sterling_NodeInfo_group,b2bi-sfg-asi-serverX", line);
+  gsub(/SBYS_CD_Server_.*_INT_CDSERVER_ADAPTER_.*-Scheduler/, "SBYS_CD_Server_X_INT_CDSERVER_ADAPTER_X-Scheduler", line);
   return line;
 }
 
