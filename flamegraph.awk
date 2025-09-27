@@ -179,7 +179,7 @@ function isInterestingMessageLine(message) {
   resetStack();
   threadDumpType = THREAD_DUMP_TYPE_OPENJ9;
   threadState = processInput($0);
-  gsub(/, state:/, "", threadState);
+  gsub(/.*, state:/, "", threadState);
   gsub(/, .*/, "", threadState);
 
   if (processInput($0) ~ /J9VMThread/) {
