@@ -7,6 +7,7 @@ SCRIPTDIR=$(dirname "$0")
 usage() {
   printf "Usage: %s [FILE|DIR...]\n" "$(basename "${0}")"
   cat <<"EOF"
+             -a AWKFLAGS: Extra flags to flamegraph.awk
              -d: Output directory (default: ./tdfg_$(date +%Y%m%d_%H%M%S)/)
              -o: Only specific flags (default: cilst)
 EOF

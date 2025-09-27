@@ -178,9 +178,9 @@ function isInterestingMessageLine(message) {
 /3XMTHREADINFO / {
   resetStack();
   threadDumpType = THREAD_DUMP_TYPE_OPENJ9;
-  threadState = processInput($(NF-1));
-  gsub(/.*:/, "", threadState);
-  gsub(/,/, "", threadState);
+  threadState = processInput($0);
+  gsub(/, state:/, "", threadState);
+  gsub(/, .*/, "", threadState);
 
   if (processInput($0) ~ /J9VMThread/) {
     threadName = processInput($0);
