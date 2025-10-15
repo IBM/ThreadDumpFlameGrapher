@@ -386,7 +386,9 @@ shouldProcessThread && threadDumpType == THREAD_DUMP_TYPE_VALGRIND && /[at|by] 0
 }
 
 shouldProcessThread && /java.lang.Thread.State: / {
-  threadState = processInput($NF);
+  threadState = processInput($0);
+  gsub(/.*java.lang.Thread.State: /, "", threadState);
+  gsub(/ .*/, "", threadState);
   threadStateCounts[threadState]++;
 }
 
@@ -540,6 +542,7 @@ function isInterestingStack(compressedStack) {
         doStacksMatch(compressedStack, "java/lang/Thread.run;com/ibm/ws/drs/ha/DRSAgentClassEvents$1.run;java/lang/Object.wait;java/lang/Object.wait;java/lang/Object.waitImpl") ||
         doStacksMatch(compressedStack, "java/lang/Thread.run;com/ibm/ws/drs/ws390/DRSControllerInstanceWrapper.run;java/lang/Object.wait;java/lang/Object.wait;java/lang/Object.waitImpl") ||
         doStacksMatch(compressedStack, "java/lang/Thread.run;java/util/concurrent/ThreadPoolExecutor$Worker.run;java/util/concurrent/ThreadPoolExecutor.runWorker;java/util/concurrent/ThreadPoolExecutor.getTask;java/util/concurrent/LinkedBlockingQueue.take;java/util/concurrent/locks/AbstractQueuedSynchronizer$ConditionObject.await;java/util/concurrent/locks/LockSupport.park;sun/misc/Unsafe.park") ||
+        doStacksMatch(compressedStack, "java/lang/Thread.run;org/jboss/modcluster/advertise/impl/AdvertiseListenerImpl$AdvertiseListenerWorker.run;java/net/DatagramSocket.receive;java/net/AbstractPlainDatagramSocketImpl.receive;java/net/PlainDatagramSocketImpl.receive0") ||
 #        doStacksMatch(compressedStack, "") ||
         doStacksMatch(compressedStack, "java/lang/Thread.run;com/ibm/ws/asynchbeans/ABWorkItemImpl.run;com/ibm/ws/asynchbeans/WorkWithExecutionContextImpl.go;com/ibm/ws/asynchbeans/J2EEContext.run;java/security/AccessController.doPrivileged;com/ibm/ws/asynchbeans/J2EEContext$DoAsProxy.run;com/ibm/websphere/security/auth/WSSubject.doAs;com/ibm/websphere/security/auth/WSSubject.doAs;javax/security/auth/Subject.doAs;java/security/AccessController.doPrivileged;com/ibm/ws/asynchbeans/J2EEContext$RunProxy.run;com/ibm/ws/scheduler/SchedulerDaemonImpl.run;java/lang/Object.wait;java/lang/Object.wait")) {
       return 0;
