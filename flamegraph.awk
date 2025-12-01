@@ -547,6 +547,9 @@ function isInterestingStack(compressedStack) {
         doStacksMatch(compressedStack, "java/lang/Thread.run;com/ibm/ws/asynchbeans/am/AlarmManager$1.run;java/lang/Thread.sleep;java/lang/Thread.sleep;java/lang/Thread.sleepImpl") ||
         doStacksMatch(compressedStack, "com/ibm/ws/util/ThreadPool$Worker.run;com/ibm/io/async/ResultHandler$2.run;com/ibm/io/async/ResultHandler.runEventProcessingLoop;com/ibm/io/async/AsyncLibrary.getCompletionData3;com/ibm/io/async/AsyncLibrary.aio_getioev3") ||
         doStacksMatch(compressedStack, "java/lang/Thread.run;com/ibm/ws/asynchbeans/am/AlarmManager$1.run;java/lang/Thread.sleep;java/lang/Thread.sleep;java/lang/Thread.sleepImpl") ||
+        doStacksMatch(compressedStack, "java/lang/Thread.run;org/apache/tomcat/util/threads/TaskThread$WrappingRunnable.run;org/apache/tomcat/util/threads/ThreadPoolExecutor$Worker.run;org/apache/tomcat/util/threads/ThreadPoolExecutor.runWorker;org/apache/tomcat/util/threads/ThreadPoolExecutor.getTask;org/apache/tomcat/util/threads/TaskQueue.poll;org/apache/tomcat/util/threads/TaskQueue.poll;java/util/concurrent/LinkedBlockingQueue.poll;java/util/concurrent/locks/AbstractQueuedSynchronizer$ConditionObject.awaitNanos;java/util/concurrent/locks/LockSupport.parkNanos;sun/misc/Unsafe.park") ||
+        doStacksMatch(compressedStack, "java/lang/Thread.run;org/apache/tomcat/util/net/Acceptor.run;org/apache/tomcat/util/net/NioEndpoint.serverSocketAccept;org/apache/tomcat/util/net/NioEndpoint.serverSocketAccept;sun/nio/ch/ServerSocketChannelImpl.accept;sun/nio/ch/ServerSocketChannelImpl.accept;sun/nio/ch/ServerSocketChannelImpl.accept0") ||
+        doStacksMatch(compressedStack, "java/lang/Thread.run;org/apache/tomcat/util/net/NioEndpoint$Poller.run;sun/nio/ch/SelectorImpl.select;sun/nio/ch/SelectorImpl.lockAndDoSelect;sun/nio/ch/PollSelectorImpl.doSelect;sun/nio/ch/PollArrayWrapper.poll;sun/nio/ch/PollArrayWrapper.poll0") ||
 #        doStacksMatch(compressedStack, "") ||
         doStacksMatch(compressedStack, "java/lang/Thread.run;com/ibm/ws/asynchbeans/ABWorkItemImpl.run;com/ibm/ws/asynchbeans/WorkWithExecutionContextImpl.go;com/ibm/ws/asynchbeans/J2EEContext.run;java/security/AccessController.doPrivileged;com/ibm/ws/asynchbeans/J2EEContext$DoAsProxy.run;com/ibm/websphere/security/auth/WSSubject.doAs;com/ibm/websphere/security/auth/WSSubject.doAs;javax/security/auth/Subject.doAs;java/security/AccessController.doPrivileged;com/ibm/ws/asynchbeans/J2EEContext$RunProxy.run;com/ibm/ws/scheduler/SchedulerDaemonImpl.run;java/lang/Object.wait;java/lang/Object.wait")) {
       return 0;
@@ -727,6 +730,7 @@ function isThreadInteresting(threadName) {
         threadName ~ /WorkManager/ || \
         threadName ~ /XIO/ || \
         threadName ~ /server.startup/ || \
+        threadName ~ /http-nio/ || \
         threadName ~ /WMQJCAResourceAdapter/ \
     ) {
       return isInterestingThreadID(threadName);
