@@ -1,0 +1,13 @@
+"http-nio-8072-exec-1" Id=236 in WAITING
+	at java.base@11.0.19/jdk.internal.misc.Unsafe.park(Native Method)
+	- waiting on <0x01b8fcf7> (a java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject)
+	at java.base@11.0.19/java.util.concurrent.locks.LockSupport.park(LockSupport.java:194)
+	at java.base@11.0.19/java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject.await(AbstractQueuedSynchronizer.java:2081)
+	at java.base@11.0.19/java.util.concurrent.LinkedBlockingQueue.take(LinkedBlockingQueue.java:433)
+	at org.apache.tomcat.util.threads.TaskQueue.take(TaskQueue.java:141)
+	at org.apache.tomcat.util.threads.TaskQueue.take(TaskQueue.java:33)
+	at org.apache.tomcat.util.threads.ThreadPoolExecutor.getTask(ThreadPoolExecutor.java:1114)
+	at org.apache.tomcat.util.threads.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1176)
+	at org.apache.tomcat.util.threads.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:659)
+	at org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:61)
+	at java.base@11.0.19/java.lang.Thread.run(Thread.java:829)

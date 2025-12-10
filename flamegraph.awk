@@ -373,7 +373,9 @@ shouldProcessThread && threadDumpType == THREAD_DUMP_TYPE_VALGRIND && /[at|by] 0
 
 ## End THREAD_DUMP_TYPE_VALGRIND
 
-/tid=/ && /nid=/ {
+## Start THREAD_DUMP_TYPE_HOTSPOT
+
+function handleHotSpotThread() {
   resetStack();
   threadDumpType = THREAD_DUMP_TYPE_HOTSPOT;
   search = processInput($0);
@@ -385,12 +387,31 @@ shouldProcessThread && threadDumpType == THREAD_DUMP_TYPE_VALGRIND && /[at|by] 0
   }
 }
 
+/tid=/ && /nid=/ {
+  handleHotSpotThread();
+}
+
+/^".*" Id=[0-9]+ in [A-Z]+ */ {
+  handleHotSpotThread();
+
+  threadState = processInput($0);
+  gsub(/.* in /, "", threadState);
+  gsub(/ +/, "", threadState);
+  threadStateCounts[threadState]++;
+}
+
 shouldProcessThread && /java.lang.Thread.State: / {
   threadState = processInput($0);
   gsub(/.*java.lang.Thread.State: /, "", threadState);
   gsub(/ .*/, "", threadState);
   threadStateCounts[threadState]++;
 }
+
+shouldProcessThread && threadDumpType == THREAD_DUMP_TYPE_HOTSPOT && /^[ \t]*at / {
+  processStackFrame($0);
+}
+
+## End THREAD_DUMP_TYPE_HOTSPOT
 
 shouldProcessThread && /3XMTHREADINFO1.*native thread ID:0x[^,]+,/ {
   hexThreadId = processInput($4);
@@ -436,16 +457,13 @@ function processStackFrame(frameLine) {
   }
 }
 
-shouldProcessThread && threadDumpType == THREAD_DUMP_TYPE_HOTSPOT && /^[ \t]*at / {
-  processStackFrame($0);
-}
-
 function doStacksMatch(compressedStack, knownComparisonStack) {
 
   if (verbose) {
     printVerbose("doStacksMatch: entry " compressedStack);
   }
 
+  # TODO: this is pretty expensive and should be done outside the loop that calls this function
   split(compressedStack, pieces, /;/);
   check = "";
   checkReversed = "";
@@ -453,6 +471,10 @@ function doStacksMatch(compressedStack, knownComparisonStack) {
   for (i = 1; i <= l; i++) {
     item = pieces[i];
     gsub(/\(.*/, "", item);
+    x = index(item, "@");
+    if (x != 0) {
+      gsub(/.*@[^\/]+\//, "", item);
+    }
     if (length(check) == 0) {
       check = item;
       checkReversed = item;
@@ -550,6 +572,9 @@ function isInterestingStack(compressedStack) {
         doStacksMatch(compressedStack, "java/lang/Thread.run;org/apache/tomcat/util/threads/TaskThread$WrappingRunnable.run;org/apache/tomcat/util/threads/ThreadPoolExecutor$Worker.run;org/apache/tomcat/util/threads/ThreadPoolExecutor.runWorker;org/apache/tomcat/util/threads/ThreadPoolExecutor.getTask;org/apache/tomcat/util/threads/TaskQueue.poll;org/apache/tomcat/util/threads/TaskQueue.poll;java/util/concurrent/LinkedBlockingQueue.poll;java/util/concurrent/locks/AbstractQueuedSynchronizer$ConditionObject.awaitNanos;java/util/concurrent/locks/LockSupport.parkNanos;sun/misc/Unsafe.park") ||
         doStacksMatch(compressedStack, "java/lang/Thread.run;org/apache/tomcat/util/net/Acceptor.run;org/apache/tomcat/util/net/NioEndpoint.serverSocketAccept;org/apache/tomcat/util/net/NioEndpoint.serverSocketAccept;sun/nio/ch/ServerSocketChannelImpl.accept;sun/nio/ch/ServerSocketChannelImpl.accept;sun/nio/ch/ServerSocketChannelImpl.accept0") ||
         doStacksMatch(compressedStack, "java/lang/Thread.run;org/apache/tomcat/util/net/NioEndpoint$Poller.run;sun/nio/ch/SelectorImpl.select;sun/nio/ch/SelectorImpl.lockAndDoSelect;sun/nio/ch/PollSelectorImpl.doSelect;sun/nio/ch/PollArrayWrapper.poll;sun/nio/ch/PollArrayWrapper.poll0") ||
+        doStacksMatch(compressedStack, "java/lang/Thread.run;org/apache/tomcat/util/threads/TaskThread$WrappingRunnable.run;org/apache/tomcat/util/threads/ThreadPoolExecutor$Worker.run;org/apache/tomcat/util/threads/ThreadPoolExecutor.runWorker;org/apache/tomcat/util/threads/ThreadPoolExecutor.getTask;org/apache/tomcat/util/threads/TaskQueue.take;org/apache/tomcat/util/threads/TaskQueue.take;java/util/concurrent/LinkedBlockingQueue.take;java/util/concurrent/locks/AbstractQueuedSynchronizer$ConditionObject.await;java/util/concurrent/locks/LockSupport.park;jdk/internal/misc/Unsafe.park") ||
+        doStacksMatch(compressedStack, "java/lang/Thread.run;org/apache/coyote/AbstractProtocol$AsyncTimeout.run;java/lang/Thread.sleep") ||
+        doStacksMatch(compressedStack, "java/lang/Thread.run;org/apache/tomcat/util/net/NioEndpoint$Poller.run;sun/nio/ch/SelectorImpl.select;sun/nio/ch/SelectorImpl.lockAndDoSelect;sun/nio/ch/EPollSelectorImpl.doSelect;sun/nio/ch/EPoll.wait") ||
 #        doStacksMatch(compressedStack, "") ||
         doStacksMatch(compressedStack, "java/lang/Thread.run;com/ibm/ws/asynchbeans/ABWorkItemImpl.run;com/ibm/ws/asynchbeans/WorkWithExecutionContextImpl.go;com/ibm/ws/asynchbeans/J2EEContext.run;java/security/AccessController.doPrivileged;com/ibm/ws/asynchbeans/J2EEContext$DoAsProxy.run;com/ibm/websphere/security/auth/WSSubject.doAs;com/ibm/websphere/security/auth/WSSubject.doAs;javax/security/auth/Subject.doAs;java/security/AccessController.doPrivileged;com/ibm/ws/asynchbeans/J2EEContext$RunProxy.run;com/ibm/ws/scheduler/SchedulerDaemonImpl.run;java/lang/Object.wait;java/lang/Object.wait")) {
       return 0;
@@ -681,7 +706,6 @@ function processInput(str) {
 function getStackFrame(line) {
   if (line ~ /4XESTACKTRACE/) {
     gsub(/4XESTACKTRACE +at /, "", line);
-    #gsub(/\(.*/, "", line);
   } else if (line ~ /4XENATIVESTACK/) {
     gsub(/4XENATIVESTACK +/, "", line);
     gsub(/^\(/, "", line);
