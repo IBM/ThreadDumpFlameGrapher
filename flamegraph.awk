@@ -375,7 +375,7 @@ shouldProcessThread && threadDumpType == THREAD_DUMP_TYPE_VALGRIND && /[at|by] 0
 
 ## Start THREAD_DUMP_TYPE_HOTSPOT
 
-function handleHotSpotThread() {
+function handleQuotedHotSpotThread() {
   resetStack();
   threadDumpType = THREAD_DUMP_TYPE_HOTSPOT;
   search = processInput($0);
@@ -388,15 +388,28 @@ function handleHotSpotThread() {
 }
 
 /tid=/ && /nid=/ {
-  handleHotSpotThread();
+  handleQuotedHotSpotThread();
 }
 
 /^".*" Id=[0-9]+ in [A-Z]+ */ {
-  handleHotSpotThread();
+  handleQuotedHotSpotThread();
 
   threadState = processInput($0);
   gsub(/.* in /, "", threadState);
   gsub(/ +/, "", threadState);
+  threadStateCounts[threadState]++;
+}
+
+/^\[tid=/ {
+  resetStack();
+  threadDumpType = THREAD_DUMP_TYPE_HOTSPOT;
+  threadName = processInput($0);
+  gsub(/^\[tid=[0-9]+\] /, "", threadName);
+  threadState = threadName;
+  gsub(/ \[state=.*/, "", threadName);
+  gsub(/.* \[state=/, "", threadState);
+  gsub(/\].*/, "", threadState);
+  processThreadName(threadName);
   threadStateCounts[threadState]++;
 }
 
@@ -575,6 +588,10 @@ function isInterestingStack(compressedStack) {
         doStacksMatch(compressedStack, "java/lang/Thread.run;org/apache/tomcat/util/threads/TaskThread$WrappingRunnable.run;org/apache/tomcat/util/threads/ThreadPoolExecutor$Worker.run;org/apache/tomcat/util/threads/ThreadPoolExecutor.runWorker;org/apache/tomcat/util/threads/ThreadPoolExecutor.getTask;org/apache/tomcat/util/threads/TaskQueue.take;org/apache/tomcat/util/threads/TaskQueue.take;java/util/concurrent/LinkedBlockingQueue.take;java/util/concurrent/locks/AbstractQueuedSynchronizer$ConditionObject.await;java/util/concurrent/locks/LockSupport.park;jdk/internal/misc/Unsafe.park") ||
         doStacksMatch(compressedStack, "java/lang/Thread.run;org/apache/coyote/AbstractProtocol$AsyncTimeout.run;java/lang/Thread.sleep") ||
         doStacksMatch(compressedStack, "java/lang/Thread.run;org/apache/tomcat/util/net/NioEndpoint$Poller.run;sun/nio/ch/SelectorImpl.select;sun/nio/ch/SelectorImpl.lockAndDoSelect;sun/nio/ch/EPollSelectorImpl.doSelect;sun/nio/ch/EPoll.wait") ||
+        doStacksMatch(compressedStack, "java/lang/Thread.run;org/apache/tomcat/util/threads/TaskThread$WrappingRunnable.run;org/apache/tomcat/util/threads/ThreadPoolExecutor$Worker.run;org/apache/tomcat/util/threads/ThreadPoolExecutor.runWorker;org/apache/tomcat/util/threads/ThreadPoolExecutor.getTask;org/apache/tomcat/util/threads/TaskQueue.take;org/apache/tomcat/util/threads/TaskQueue.take;java/util/concurrent/LinkedBlockingQueue.take;java/util/concurrent/locks/AbstractQueuedSynchronizer$ConditionObject.await;java/util/concurrent/ForkJoinPool.managedBlock;java/util/concurrent/ForkJoinPool.unmanagedBlock;java/util/concurrent/locks/AbstractQueuedSynchronizer$ConditionNode.block;java/util/concurrent/locks/LockSupport.park;jdk/internal/misc/Unsafe.park;") ||
+        doStacksMatch(compressedStack, "java/lang/Thread.run;org/apache/tomcat/util/net/NioEndpoint$Poller.run;sun/nio/ch/SelectorImpl.select;sun/nio/ch/SelectorImpl.lockAndDoSelect;sun/nio/ch/WEPollSelectorImpl.doSelect;sun/nio/ch/WEPoll.wait") ||
+        doStacksMatch(compressedStack, "java/lang/Thread.run;org/apache/tomcat/util/threads/TaskThread$WrappingRunnable.run;org/apache/tomcat/util/threads/ThreadPoolExecutor$Worker.run;org/apache/tomcat/util/threads/ThreadPoolExecutor.runWorker;org/apache/tomcat/util/threads/ThreadPoolExecutor.getTask;org/apache/tomcat/util/threads/TaskQueue.take;org/apache/tomcat/util/threads/TaskQueue.take;java/util/concurrent/LinkedBlockingQueue.take;java/util/concurrent/locks/AbstractQueuedSynchronizer$ConditionObject.await;java/util/concurrent/ForkJoinPool.managedBlock;java/util/concurrent/ForkJoinPool.unmanagedBlock;java/util/concurrent/locks/AbstractQueuedSynchronizer$ConditionNode.block;java/util/concurrent/locks/LockSupport.park;jdk/internal/misc/Unsafe.park") ||
+        doStacksMatch(compressedStack, "java/lang/Thread.run;org/apache/tomcat/util/net/Acceptor.run;org/apache/tomcat/util/net/NioEndpoint.serverSocketAccept;org/apache/tomcat/util/net/NioEndpoint.serverSocketAccept;sun/nio/ch/ServerSocketChannelImpl.accept;sun/nio/ch/ServerSocketChannelImpl.implAccept;sun/nio/ch/Net.accept") ||
 #        doStacksMatch(compressedStack, "") ||
         doStacksMatch(compressedStack, "java/lang/Thread.run;com/ibm/ws/asynchbeans/ABWorkItemImpl.run;com/ibm/ws/asynchbeans/WorkWithExecutionContextImpl.go;com/ibm/ws/asynchbeans/J2EEContext.run;java/security/AccessController.doPrivileged;com/ibm/ws/asynchbeans/J2EEContext$DoAsProxy.run;com/ibm/websphere/security/auth/WSSubject.doAs;com/ibm/websphere/security/auth/WSSubject.doAs;javax/security/auth/Subject.doAs;java/security/AccessController.doPrivileged;com/ibm/ws/asynchbeans/J2EEContext$RunProxy.run;com/ibm/ws/scheduler/SchedulerDaemonImpl.run;java/lang/Object.wait;java/lang/Object.wait")) {
       return 0;
