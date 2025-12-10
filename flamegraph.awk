@@ -396,7 +396,16 @@ function handleQuotedHotSpotThread() {
 
   threadState = processInput($0);
   gsub(/.* in /, "", threadState);
-  gsub(/ +/, "", threadState);
+  gsub(/ */, "", threadState);
+  threadStateCounts[threadState]++;
+}
+
+/^".*" Id=[0-9]+ [A-Z]+/ {
+  handleQuotedHotSpotThread();
+
+  threadState = processInput($0);
+  gsub(/ Id=[0-9]+ /, "", threadState);
+  gsub(/ */, "", threadState);
   threadStateCounts[threadState]++;
 }
 
