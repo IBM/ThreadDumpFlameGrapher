@@ -33,6 +33,7 @@ BEGIN {
   THREAD_DUMP_TYPE_JDMPVIEW_JAVA = 6;
   THREAD_DUMP_TYPE_JDMPVIEW_NATIVE = 7;
   THREAD_DUMP_TYPE_VALGRIND = 8;
+  THREAD_DUMP_TYPE_BBOJ0117I = 9;
 
   # https://www.ibm.com/docs/en/sdk-java-technology/8?topic=dumps-java-dump#threads
   THREAD_STATE_MAP["R"] = "Runnable"; # The thread is able to run
@@ -348,6 +349,40 @@ shouldProcessThread && threadDumpType == THREAD_DUMP_TYPE_JDMPVIEW_NATIVE && /^[
 
 ## End THREAD_DUMP_TYPE_JDMPVIEW_NATIVE
 
+## Start THREAD_DUMP_TYPE_BBOJ0117I
+
+state_BBOJ0117I > 0 {
+  state_BBOJ0117I++;
+  if (state_BBOJ0117I > 3) {
+    state_BBOJ0117I = 0;
+  }
+}
+
+shouldProcessThread && threadDumpType == THREAD_DUMP_TYPE_BBOJ0117I && !/^  / {
+  resetStack();
+}
+
+shouldProcessThread && threadDumpType == THREAD_DUMP_TYPE_BBOJ0117I {
+  inputLine = strip(processInput($0));
+  processStackFrame(inputLine);
+}
+
+state_BBOJ0117I > 0 && /Traceback for thread/ {
+  resetStack();
+  state_BBOJ0117I = 0;
+  threadDumpType = THREAD_DUMP_TYPE_BBOJ0117I;
+  threadName = strip(processInput($0));
+  gsub(/.*Traceback for thread /, "", threadName);
+  gsub(/:$/, "", threadName);
+  processThreadName(threadName);
+}
+
+/ExtendedMessage: BBOJ0117I: / {
+  state_BBOJ0117I = 1;
+}
+
+## End THREAD_DUMP_TYPE_BBOJ0117I
+
 ## Start THREAD_DUMP_TYPE_VALGRIND
 
 /bytes in.*in loss record/ && isInterestingMessageLine($0) {
@@ -506,7 +541,7 @@ function doStacksMatch(compressedStack, knownComparisonStack) {
     }
   }
 
-  if (threadDumpType == THREAD_DUMP_TYPE_HOTSPOT) {
+  if (threadDumpType == THREAD_DUMP_TYPE_HOTSPOT || threadDumpType == THREAD_DUMP_TYPE_BBOJ0117I) {
     gsub(/\//, ".", knownComparisonStack);
   }
 
@@ -756,6 +791,12 @@ function arrayLength(array) {
   l = 0;
   for (i in array) l++;
   return l;
+}
+
+function strip(str) {
+  gsub(/^ +/, "", str);
+  gsub(/ +$/, "", str);
+  return str;
 }
 
 function isThreadInteresting(threadName) {
