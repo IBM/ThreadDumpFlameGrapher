@@ -34,6 +34,7 @@ BEGIN {
   THREAD_DUMP_TYPE_JDMPVIEW_NATIVE = 7;
   THREAD_DUMP_TYPE_VALGRIND = 8;
   THREAD_DUMP_TYPE_BBOJ0117I = 9;
+  THREAD_DUMP_TYPE_DATAPOWER_LLDIAG = 10;
 
   # https://www.ibm.com/docs/en/sdk-java-technology/8?topic=dumps-java-dump#threads
   THREAD_STATE_MAP["R"] = "Runnable"; # The thread is able to run
@@ -407,6 +408,35 @@ shouldProcessThread && threadDumpType == THREAD_DUMP_TYPE_VALGRIND && /[at|by] 0
 }
 
 ## End THREAD_DUMP_TYPE_VALGRIND
+
+## Start THREAD_DUMP_TYPE_DATAPOWER_LLDIAG
+
+/^miniwd/ && isInterestingMessageLine($0) {
+  resetStack();
+  threadDumpType = THREAD_DUMP_TYPE_DATAPOWER_LLDIAG;
+  threadName = "DPLLDIAG";
+  processThreadName(threadName);
+  threadStateCounts[threadState]++;
+  gsub(/\t/, " ");
+  stackstr = "";
+  for (i = 10; i <= NF; i++) {
+    stackstr = stackstr $i;
+    if (i != NF) {
+      stackstr = stackstr " ";
+    }
+  }
+  stackstr = remove_substrings(stackstr, "(", ")");
+  stackstr = replace_chars_within(stackstr, "[", "]", " ", "_");
+  n = split(stackstr, pieces, / /);
+  for (i = 1; i <= n; i++) {
+    p = pieces[i];
+    if (p !~ /^0x[0-9a-fA-F]+$/) {
+      processStackFrame(p);
+    }
+  }
+}
+
+## End THREAD_DUMP_TYPE_DATAPOWER_LLDIAG
 
 ## Start THREAD_DUMP_TYPE_HOTSPOT
 
@@ -838,6 +868,48 @@ function isInterestingThreadID(threadName) {
   #  return 0;
   #}
   return 1;
+}
+
+function remove_substrings(str, start_char, end_char) {
+  result = "";
+  len = length(str);
+  in_substring = 0;
+
+  for (i = 1; i <= len; i++) {
+    char = substr(str, i, 1);
+
+    if (!in_substring && char == start_char) {
+      in_substring = 1;
+    } else if (in_substring && char == end_char) {
+      in_substring = 0;
+    } else if (!in_substring) {
+      result = result char;
+    }
+  }
+  return result;
+}
+
+function replace_chars_within(str, start_char, end_char, search_char, replace_char) {
+  result = "";
+  len = length(str);
+  in_substring = 0;
+
+  for (i = 1; i <= len; i++) {
+    char = substr(str, i, 1);
+
+    if (!in_substring && char == start_char) {
+      in_substring = 1;
+    } else if (in_substring && char == end_char) {
+      in_substring = 0;
+    }
+
+    if (in_substring && char == search_char) {
+      char = replace_char;
+    }
+
+    result = result char;
+  }
+  return result;
 }
 
 END {
