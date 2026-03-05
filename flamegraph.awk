@@ -417,9 +417,11 @@ shouldProcessThread && threadDumpType == THREAD_DUMP_TYPE_VALGRIND && /[at|by] 0
   threadName = "DPLLDIAG";
   processThreadName(threadName);
   threadStateCounts[threadState]++;
+  gsub(/.*'/, "");
+  gsub(/.*'/, "");
   gsub(/\t/, " ");
   stackstr = "";
-  for (i = 10; i <= NF; i++) {
+  for (i = 2; i <= NF; i++) {
     stackstr = stackstr $i;
     if (i != NF) {
       stackstr = stackstr " ";
