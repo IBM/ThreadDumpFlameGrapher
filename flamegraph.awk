@@ -415,6 +415,7 @@ shouldProcessThread && threadDumpType == THREAD_DUMP_TYPE_VALGRIND && /[at|by] 0
   resetStack();
   threadDumpType = THREAD_DUMP_TYPE_DATAPOWER_LLDIAG;
   threadName = "DPLLDIAG";
+  threadState = "U";
   processThreadName(threadName);
   threadStateCounts[threadState]++;
   gsub(/.*'/, "");
