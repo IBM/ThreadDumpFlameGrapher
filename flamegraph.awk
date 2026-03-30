@@ -18,6 +18,8 @@
 #     -v inverted=true
 #   Ignore idle threads:
 #     -v ignoreidle=true
+#   Treat stacks with less than N frames as idle:
+#     -v nonidlestacksize=N
 #   Trim package names:
 #     -v trim=true
 
@@ -72,6 +74,12 @@ BEGIN {
     groupByThreadState = 1;
   }
 
+  if (length(nonidlestacksize) == 0) {
+    nonidlestacksize = 0;
+  } else {
+    nonidlestacksize = nonidlestacksize + 0;
+  }
+
   if (!nativeSeparator) {
     #nativeSeparator = "-- native stack --";
     nativeSeparator = "-";
@@ -90,6 +98,7 @@ BEGIN {
 
   if (verbose) {
     printVerbose("CONFIG: groupByThreadState=" groupByThreadState);
+    printVerbose("CONFIG: nonidlestacksize=" nonidlestacksize);
   }
 }
 
@@ -570,6 +579,14 @@ function doStacksMatch(compressedStack, knownComparisonStack) {
 }
 
 function isInterestingStack(compressedStack) {
+  # Check if stack has fewer frames than nonidlestacksize threshold
+  if (nonidlestacksize > 0) {
+    frameCount = split(compressedStack, frames, /;/);
+    if (frameCount < nonidlestacksize) {
+      return 0;
+    }
+  }
+
   if (ignoreidle) {
 
     # https://www.ibm.com/support/pages/identifying-idle-threads-thread-dumps-taken-against-websphere-application-server
@@ -637,6 +654,7 @@ function isInterestingStack(compressedStack) {
         doStacksMatch(compressedStack, "java/lang/Thread.run;org/apache/tomcat/util/threads/TaskThread$WrappingRunnable.run;org/apache/tomcat/util/threads/ThreadPoolExecutor$Worker.run;org/apache/tomcat/util/threads/ThreadPoolExecutor.runWorker;org/apache/tomcat/util/threads/ThreadPoolExecutor.getTask;org/apache/tomcat/util/threads/TaskQueue.take;org/apache/tomcat/util/threads/TaskQueue.take;java/util/concurrent/LinkedBlockingQueue.take;java/util/concurrent/locks/AbstractQueuedSynchronizer$ConditionObject.await;java/util/concurrent/ForkJoinPool.managedBlock;java/util/concurrent/ForkJoinPool.unmanagedBlock;java/util/concurrent/locks/AbstractQueuedSynchronizer$ConditionNode.block;java/util/concurrent/locks/LockSupport.park;jdk/internal/misc/Unsafe.park") ||
         doStacksMatch(compressedStack, "java/lang/Thread.run;org/apache/tomcat/util/net/Acceptor.run;org/apache/tomcat/util/net/NioEndpoint.serverSocketAccept;org/apache/tomcat/util/net/NioEndpoint.serverSocketAccept;sun/nio/ch/ServerSocketChannelImpl.accept;sun/nio/ch/ServerSocketChannelImpl.implAccept;sun/nio/ch/Net.accept") ||
         doStacksMatch(compressedStack, "com/ibm/ws/util/ThreadPool$Worker.run;com/ibm/io/async/ResultHandler$2.run;com/ibm/io/async/ResultHandler.runEventProcessingLoop;java/lang/Object.wait;java/lang/Object.wait;java/lang/Object.waitImpl") ||
+        doStacksMatch(compressedStack, "java/lang/Thread.run;com/sterlingcommerce/woodstock/workflow/queue/BasicExecutor$Worker.run;com/sterlingcommerce/woodstock/workflow/queue/BasicExecutor.getTask;com/sterlingcommerce/woodstock/workflow/queue/PriorityMultiQueue.poll;java/lang/Object.wait;java/lang/Object.wait;java/lang/Object.waitImpl") ||
 #        doStacksMatch(compressedStack, "") ||
         doStacksMatch(compressedStack, "java/lang/Thread.run;com/ibm/ws/asynchbeans/ABWorkItemImpl.run;com/ibm/ws/asynchbeans/WorkWithExecutionContextImpl.go;com/ibm/ws/asynchbeans/J2EEContext.run;java/security/AccessController.doPrivileged;com/ibm/ws/asynchbeans/J2EEContext$DoAsProxy.run;com/ibm/websphere/security/auth/WSSubject.doAs;com/ibm/websphere/security/auth/WSSubject.doAs;javax/security/auth/Subject.doAs;java/security/AccessController.doPrivileged;com/ibm/ws/asynchbeans/J2EEContext$RunProxy.run;com/ibm/ws/scheduler/SchedulerDaemonImpl.run;java/lang/Object.wait;java/lang/Object.wait")) {
       return 0;
@@ -743,7 +761,8 @@ function getThreadPoolName(line) {
   gsub(/^ThreadManager.JobsProcessorThread.ApplicationThread.*/, "ThreadManager.JobsProcessorThread.ApplicationThread X", line);
   gsub(/^ThreadManager.JobsProcessorThread.RmmThread.*/, "ThreadManager.JobsProcessorThread.RmmThread X", line);
   gsub(/\[SSL: ServerSocket\[.*\]\].*/, "[SSL: ServerSocket[X]]", line);
-  gsub(/HAR\.[0-9]+\.Thread/, "HAR.X.Thread", line);
+  gsub(/^WFE\.[0-9]+\.Thread/, "WFE.X.Thread", line);
+  gsub(/^HAR\.[0-9]+\.Thread/, "HAR.X.Thread", line);
   gsub(/^AIO Timer Thread.*/, "AIO Timer Thread X", line);
   gsub(/^com.ibm.son.mesh.Peer-tcp-port.*/, "com.ibm.son.mesh.Peer-tcp-port X", line);
   gsub(/^Connect Selector.*/, "Connect Selector X", line);
