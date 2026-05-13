@@ -35,6 +35,7 @@ BEGIN {
   THREAD_DUMP_TYPE_VALGRIND = 8;
   THREAD_DUMP_TYPE_BBOJ0117I = 9;
   THREAD_DUMP_TYPE_DATAPOWER_LLDIAG = 10;
+  THREAD_DUMP_TYPE_MAT_THREADS = 11;
 
   # https://www.ibm.com/docs/en/sdk-java-technology/8?topic=dumps-java-dump#threads
   THREAD_STATE_MAP["R"] = "Runnable"; # The thread is able to run
@@ -83,7 +84,7 @@ BEGIN {
     rootAnnotation = "_[i]";
   }
 
-  # Create hex character } decimal map, e.g. hexhcars["A"] = 10, etc.
+  # Create hex character to decimal map, e.g. hexhcars["A"] = 10, etc.
   for (i=0; i<16; i++) {
     hexchars[sprintf("%x", i)] = i;
     hexchars[sprintf("%X", i)] = i;
@@ -283,6 +284,28 @@ shouldProcessThread && threadDumpType == THREAD_DUMP_TYPE_TWAS_WSVR0605W && !/^[
 }
 
 ## End WSVR0605W
+
+## Start THREAD_DUMP_TYPE_MAT_THREADS
+
+shouldProcessThread && threadDumpType == THREAD_DUMP_TYPE_MAT_THREADS && /^ at / {
+  inputLine = processInput($0);
+  gsub(/^ at /, "", inputLine);
+  gsub(/\(.* \(/, "(", inputLine);
+  processStackFrame(inputLine);
+}
+
+shouldProcessThread && threadDumpType == THREAD_DUMP_TYPE_MAT_THREADS && !/^ at / {
+  resetStack();
+}
+
+/^Thread 0x/ && isInterestingMessageLine($0) {
+  resetStack();
+  threadDumpType = THREAD_DUMP_TYPE_MAT_THREADS;
+  threadName = "Unknown";
+  processThreadName(threadName);
+}
+
+## End THREAD_DUMP_TYPE_MAT_THREADS
 
 ## Start WTRN0124I
 
