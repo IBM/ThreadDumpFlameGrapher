@@ -543,6 +543,10 @@ shouldProcessThread && (/4XESTACKTRACE/ || /4XENATIVESTACK/) {
 function processStackFrame(frameLine) {
   if (isStackFrameInteresting(processInput(frameLine))) {
     stackFrame = getStackFrame(processInput(frameLine));
+
+    # Sometimes there are garbled characters and this can cause XML parsing errors of SVGs
+    gsub(/[^a-zA-Z0-9\/.$\(\): _]/, "", stackFrame);
+    
     addFrame = stackFrame;
     hasSomeStack = 1;
 
