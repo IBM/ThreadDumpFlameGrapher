@@ -419,7 +419,7 @@ chmod a+rw "${OUTPUT}"
 
 MYDIR="$(pwd)"
 if [ "${MYDIR#*ecurep}" != "${MYDIR}" ]; then
-  echo "https://ecurep.mainz.de.ibm.com/rest/download/$(pwd | sed 's/^\/ecurep\/sf\/TS...\/...\///g')/${OUTPUT}"
+  echo "https://ecurep.itc.ibm.com/rest/download/$(pwd | sed 's/^\/ecurep\/sf\/TS...\/...\///g')/${OUTPUT}"
 else
   case "$OSTYPE" in
     linux*)
