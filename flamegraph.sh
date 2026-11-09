@@ -359,7 +359,7 @@ cat > "${OUTPUT}" << EOF
 
           <div class="checkbox">
             <input type="checkbox" id="commonthreads" name="commonthreads" onchange="processCheckboxStates()" checked />
-            <label for="commonthreads">Only common thread pools <span class="help" title="Default Executor, WebContainer, SIBJMSRAThreadPool, MessageListenerThreadPool, ORB.thread.pool, WebSphere WLM Dispatch Thread, WorkManager, WMQJCAResourceAdapter, XIO, http-nio">ⓘ</span></label>
+            <label for="commonthreads">Only common WebSphere thread pools <span class="help" title="Default Executor, WebContainer, SIBJMSRAThreadPool, MessageListenerThreadPool, ORB.thread.pool, WebSphere WLM Dispatch Thread, WorkManager, WMQJCAResourceAdapter, XIO, http-nio">ⓘ</span></label>
           </div>
 
           <div class="checkbox">
